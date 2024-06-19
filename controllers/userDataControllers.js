@@ -66,7 +66,6 @@ const getCategoryResponses = async (userId, categories) => {
       return category.questions.find((questionId) => questionId.equals(response.Question_id));
     });
     
-    console.log(Modified_Questions);
     const categoryDoneCount = Modified_Questions.filter(
       (question) => question.Question_Status === "Completed"
     ).length;

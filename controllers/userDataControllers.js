@@ -61,10 +61,12 @@ const getCategoryResponses = async (userId, categories) => {
 
   for (const category of categories) {
     const categoryQuestionsCount = category.questions.length;
-    const Modified_Questions = responses.filter((response) =>
-      category.questions.includes(response.Question_id)
-    );
 
+    const Modified_Questions = responses.filter((response) => {
+      return category.questions.find((questionId) => questionId.equals(response.Question_id));
+    });
+    
+    console.log(Modified_Questions);
     const categoryDoneCount = Modified_Questions.filter(
       (question) => question.Question_Status === "Completed"
     ).length;
@@ -117,7 +119,7 @@ export const getUserResponses = async (req, res, next) => {
       Questions_done: Questions_done,
       Total_percentage: Total_percentage,
     };
-    const category_values = await getCategoryResponses(User_info,categories);
+    const category_values = await getCategoryResponses(User_info, categories);
     res.status(200).json({
       Total_values,
       category_values,

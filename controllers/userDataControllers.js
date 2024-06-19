@@ -10,64 +10,74 @@ export const getAllData = async (req, res, next) => {
     return;
   }
   try {
-    const Total_Questions = await questionsmodel.countDocuments();
-    const Questions_done = await responsemodel.countDocuments({
-      CreatedBy: User_info,
-      Question_Status: "Completed",
-    });
+    const [Total_Questions, Questions_done, categories] = await Promise.all([
+      questionsmodel.countDocuments(),
+      responsemodel.countDocuments({
+        CreatedBy: User_info,
+        Question_Status: "Completed",
+      }),
+      categorymodel.find().sort({ category_name: 1 }).lean(),
+    ]);
+
     const Total_percentage = parseFloat(
       ((Questions_done / Total_Questions) * 100).toFixed(2)
     );
+
     const Total_values = {
-      Total_Questions: Total_Questions,
-      Questions_done: Questions_done,
-      Total_percentage: Total_percentage,
+      Total_Questions,
+      Questions_done,
+      Total_percentage,
     };
-    const category_values = await getCategoryResponses(User_info);
-    const revisitedQuestionsInfo = await getRevisitedQuestionInfo(User_info);
-    const unsorted_data = await categorymodel.find();
-    const data = unsorted_data.sort((a, b) =>
-      a.category_name.localeCompare(b.category_name)
-    );
+    const category_values = await getCategoryResponses(User_info, categories);
     const responses = {
       Total_values: Total_values,
       category_values: category_values,
-      revisitedQuestionsInfo: revisitedQuestionsInfo,
     };
     res.status(200).json({
       responses,
-      data,
+      data: categories,
     });
   } catch (error) {
     next(error.message);
   }
 };
 
-const getCategoryResponses = async (userId) => {
-  const categories = await categorymodel.find({});
-  let categoryValues = {};
+const getCategoryResponses = async (userId, categories) => {
+  // Extract all question IDs from categories
+  const questionIds = categories.reduce((ids, category) => {
+    return ids.concat(category.questions);
+  }, []);
+
+  // Fetch responses related to the extracted question IDs and created by the user
+  const responses = await responsemodel
+    .find({
+      CreatedBy: userId,
+      Question_id: { $in: questionIds },
+    })
+    .lean();
+
+  // Process the responses to calculate category statistics
+  const categoryValues = {};
 
   for (const category of categories) {
-    const categoryQuestions = category.questions.length;
-    const Modified_Questions = await responsemodel.find({
-      CreatedBy: userId,
-      // Question_Status: 'Completed',
-      Question_id: { $in: category.questions },
-    });
-    const categoryDone = Modified_Questions.filter(
+    const categoryQuestionsCount = category.questions.length;
+    const Modified_Questions = responses.filter((response) =>
+      category.questions.includes(response.Question_id)
+    );
+
+    const categoryDoneCount = Modified_Questions.filter(
       (question) => question.Question_Status === "Completed"
     ).length;
     const categoryPercentage = parseFloat(
-      ((categoryDone / categoryQuestions) * 100).toFixed(2)
+      ((categoryDoneCount / categoryQuestionsCount) * 100).toFixed(2)
     );
-    const categoryValue = {
+    categoryValues[category.category_name] = {
       cid: category._id,
-      categoryQuestions: categoryQuestions,
-      categoryDone: categoryDone,
+      categoryQuestions: categoryQuestionsCount,
+      categoryDone: categoryDoneCount,
       Modified_Questions: Modified_Questions,
-      categoryPercentage: categoryPercentage,
+      categoryPercentage,
     };
-    categoryValues[category.category_name] = categoryValue;
   }
 
   return categoryValues;
@@ -91,11 +101,14 @@ export const getUserResponses = async (req, res, next) => {
     return;
   }
   try {
-    const Total_Questions = await questionsmodel.countDocuments();
-    const Questions_done = await responsemodel.countDocuments({
-      CreatedBy: User_info,
-      Question_Status: "Completed",
-    });
+    const [Total_Questions, Questions_done, categories] = await Promise.all([
+      questionsmodel.countDocuments(),
+      responsemodel.countDocuments({
+        CreatedBy: User_info,
+        Question_Status: "Completed",
+      }),
+      categorymodel.find().lean(),
+    ]);
     const Total_percentage = parseFloat(
       ((Questions_done / Total_Questions) * 100).toFixed(2)
     );
@@ -104,12 +117,10 @@ export const getUserResponses = async (req, res, next) => {
       Questions_done: Questions_done,
       Total_percentage: Total_percentage,
     };
-    const category_values = await getCategoryResponses(User_info);
-    const revisitedQuestionsInfo = await getRevisitedQuestionInfo(User_info);
+    const category_values = await getCategoryResponses(User_info,categories);
     res.status(200).json({
       Total_values,
       category_values,
-      revisitedQuestionsInfo,
     });
   } catch (error) {
     next(error.message);

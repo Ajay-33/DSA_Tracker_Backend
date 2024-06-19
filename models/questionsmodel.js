@@ -17,7 +17,6 @@ const questionSchema = new mongoose.Schema(
     },
     question_link: {
       type: [String],
-      unique: true,
     },
   },
   { timestamps: true }

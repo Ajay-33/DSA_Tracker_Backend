@@ -108,7 +108,9 @@ export const registerController = async (req, res, next) => {
 
   try {
     if (!fname || !lname || !email || !password || !otp) {
-      return res.status(400).json({ message: "Please fill out all the fields" });
+      return res
+        .status(400)
+        .json({ message: "Please fill out all the fields" });
     }
 
     const existingUser = await usermodel.findOne({ email });
@@ -119,7 +121,7 @@ export const registerController = async (req, res, next) => {
     // Find the OTP record in the database
     const otpRecord = await OTPModel.findOne({ email });
     if (!otpRecord) {
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ message: "Invalid OTP or OTP expired" });
     }
 
     // Compare the provided OTP with the stored hashed OTP
@@ -127,7 +129,11 @@ export const registerController = async (req, res, next) => {
     if (!isOtpValid) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
-    await OTPModel.deleteOne({ email });
+    if (isOtpValid && Date.now() > otpRecord.expiresAt) {
+      await OTPModel.deleteOne({ email });
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
     const predefinedAdminEmails = loadPredefinedAdminEmails();
     const userType = predefinedAdminEmails.includes(email) ? "Admin" : "User";
 
@@ -143,6 +149,8 @@ export const registerController = async (req, res, next) => {
 
     const { password: _, ...userWithoutPassword } = user.toObject();
 
+    await OTPModel.deleteOne({ email });
+
     res.status(201).json({
       success: true,
       message: "User created successfully",
@@ -154,13 +162,14 @@ export const registerController = async (req, res, next) => {
   }
 };
 
-
 export const loginController = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Please fill out all the fields" });
+      return res
+        .status(400)
+        .json({ message: "Please fill out all the fields" });
     }
 
     const user = await usermodel.findOne({ email }).select("+password");
@@ -265,5 +274,45 @@ export const editRole = async (req, res) => {
   } catch (error) {
     console.error("Error updating user role:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const passwordController = async (req, res, next) => {
+  const { email, newPassword, otp } = req.body;
+
+  try {
+    if (!email || !newPassword || !otp) {
+      return res
+        .status(400)
+        .json({ message: "Please fill out all the fields" });
+    }
+
+    const user = await usermodel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Find the OTP record in the database
+    const otpRecord = await OTPModel.findOne({ email });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "OTP Expired" });
+    }
+
+    // Compare the provided OTP with the stored hashed OTP
+    const isOtpValid = await bcrypt.compare(otp, otpRecord.otp);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+    if (isOtpValid && Date.now() > otpRecord.expiresAt) {
+      await OTPModel.deleteOne({ email });
+      return res.status(400).json({ message: "OTP expired" });
+    }
+    user.password = newPassword;
+    await user.save();
+    await OTPModel.deleteOne({ email });
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

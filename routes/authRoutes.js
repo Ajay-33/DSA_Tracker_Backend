@@ -6,6 +6,7 @@ import {
   editRole,
   getUsers,
   loginController,
+  passwordController,
   registerController,
   removePredefinedEmailsController,
 } from "../controllers/authControllers.js";
@@ -20,6 +21,7 @@ router.post("/login", loginController);
 
 // Get Users
 router.get("/users", userAuth, getUsers);
+router.post("/change-password", passwordController);
 
 // Delete User
 router.delete("/users/delete/:id", userAuth, deleteUser);

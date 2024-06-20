@@ -6,11 +6,11 @@ import usermodel from "../models/usermodel.js";
 
 const sendOtpEmail = async (email, otp) => {
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
+    host: process.env.GMAIL_HOST,
+    port: process.env.GMAIL_PORT,
     secure: false,
     auth: {
-      user: "ajayumsa@gmail.com",
+      user: process.env.GMAIL,
       pass: process.env.GMAIL_APP_PASS,
     },
   });
@@ -53,12 +53,9 @@ export const sendOtpController = async (req, res) => {
     await sendOtpEmail(email, otp);
     let otpRecord = await OTPModel.findOne({ email });
     if (otpRecord) {
-      // If OTP is expired, update it
-      if (Date.now() > otpRecord.expiresAt) {
-        otpRecord.otp = hashedOtp;
-        otpRecord.expiresAt = otpExpiration;
-        await otpRecord.save();
-      }
+      otpRecord.otp = hashedOtp;
+      otpRecord.expiresAt = otpExpiration;
+      await otpRecord.save();
     } else {
       // Save new OTP to the database
       await OTPModel.create({
@@ -95,12 +92,9 @@ export const passwordOtp = async (req, res) => {
     await sendOtpEmail(email, otp);
     let otpRecord = await OTPModel.findOne({ email });
     if (otpRecord) {
-      // If OTP is expired, update it
-      if (Date.now() > otpRecord.expiresAt) {
         otpRecord.otp = hashedOtp;
         otpRecord.expiresAt = otpExpiration;
         await otpRecord.save();
-      }
     } else {
       // Save new OTP to the database
       await OTPModel.create({

@@ -15,6 +15,7 @@ import questionRoutes from "./routes/questionRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import responseRoutes from "./routes/responseRoutes.js";
 import dataRoutes from "./routes/userResponseRoutes.js";
+import otpRoutes from "./routes/otpRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -28,6 +29,7 @@ app.use(bodyParser.json());
 app.use(cors());
 
 // Routes
+app.use("/api/v1/otp", otpRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/question", questionRoutes);
 app.use("/api/v1/category", categoryRoutes);

@@ -2,6 +2,8 @@ import usermodel from "../models/usermodel.js";
 import fs from "fs";
 import mongoose from "mongoose";
 import path from "path";
+import OTPModel from "../models/OTPModel.js";
+import bcrypt from "bcryptjs";
 
 const getConfigFile = () => {
   try {
@@ -102,19 +104,30 @@ export const removePredefinedEmailsController = async (req, res) => {
 };
 
 export const registerController = async (req, res, next) => {
-  const { fname, lname, email, password } = req.body;
+  const { fname, lname, email, password, otp } = req.body;
 
   try {
-    if (!fname || !lname || !email || !password) {
-      res.status(400).json({ message: "Please fill out all the fields" });
+    if (!fname || !lname || !email || !password || !otp) {
+      return res.status(400).json({ message: "Please fill out all the fields" });
     }
 
     const existingUser = await usermodel.findOne({ email });
-
     if (existingUser) {
-      res.status(400).json({ message: "User Already Exists" });
+      return res.status(400).json({ message: "User Already Exists" });
     }
 
+    // Find the OTP record in the database
+    const otpRecord = await OTPModel.findOne({ email });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Compare the provided OTP with the stored hashed OTP
+    const isOtpValid = await bcrypt.compare(otp, otpRecord.otp);
+    if (!isOtpValid) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+    await OTPModel.deleteOne({ email });
     const predefinedAdminEmails = loadPredefinedAdminEmails();
     const userType = predefinedAdminEmails.includes(email) ? "Admin" : "User";
 
@@ -140,6 +153,7 @@ export const registerController = async (req, res, next) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 export const loginController = async (req, res, next) => {
   try {

@@ -146,19 +146,19 @@ export const loginController = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      res.status(400).json({ message: "Please fill out all the fields" });
+      return res.status(400).json({ message: "Please fill out all the fields" });
     }
 
     const user = await usermodel.findOne({ email }).select("+password");
 
     if (!user) {
-      res.status(400).json({ message: "Invalid Email or Password" });
+      return res.status(400).json({ message: "Invalid Email or Password" });
     }
 
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-      throw new Error("Invalid Email or Password");
+      return res.status(400).json({ message: "Invalid Email or Password" });
     }
 
     const token = user.createJWT();

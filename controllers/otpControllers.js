@@ -20,15 +20,24 @@ const sendOtpEmail = async (email, otp) => {
     to: email,
     subject: "Your OTP Code",
     html: `
-    <p style="font-size: 16px; font-family: Arial, sans-serif;">Hello,</p>
-    <p style="font-size: 16px; font-family: Arial, sans-serif;">
-      Your Verification code for A2Z DSA Tracker is <strong>${otp}</strong>.
-    </p>
-    <p style="font-size: 16px; font-family: Arial, sans-serif;">
-      Thank you for using A2Z DSA Tracker.
-    </p>
-  `,
+    <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+      <div style="background-color: #ffffff; padding: 20px; border: 1px solid #dddddd; border-radius: 5px;">
+        <p style="font-size: 16px; color: #333333;">Hello,</p>
+        <p style="font-size: 16px; color: #333333;">
+          Your Verification code for A2Z DSA Tracker is 
+          <strong style="font-size: 18px; color: #ff6600;">${otp}</strong>.
+        </p>
+        <p style="font-size: 16px; color: #333333;">
+          Please note that this code will expire in <strong>10 minutes</strong>.
+        </p>
+        <p style="font-size: 16px; color: #333333;">
+          Thank you for using A2Z DSA Tracker.
+        </p>
+      </div>
+    </div>
+    `,
   };
+  
 
   await transporter.sendMail(mailOptions);
 };
@@ -47,7 +56,7 @@ export const sendOtpController = async (req, res) => {
 
     const otp = crypto.randomInt(100000, 999999).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);
-    const otpExpiration = Date.now() + 30 * 60 * 1000;
+    const otpExpiration = Date.now() + 10 * 60 * 1000;
 
     // Save OTP to the database
     await sendOtpEmail(email, otp);
@@ -86,7 +95,7 @@ export const passwordOtp = async (req, res) => {
 
     const otp = crypto.randomInt(100000, 999999).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);
-    const otpExpiration = Date.now() + 30 * 60 * 1000;
+    const otpExpiration = Date.now() + 10 * 60 * 1000;
 
     // Save OTP to the database
     await sendOtpEmail(email, otp);

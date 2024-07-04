@@ -5,13 +5,14 @@ const userAuth = async (req, res, next) => {
   if (!authHeader || !authHeader.startsWith("Bearer")) {
     next("Auth Failed");
   }
+  console.log('ho');
   const token = authHeader.split(" ")[1];
   try {
     const payload = JWT.verify(token, process.env.JWT_SECRET);
     req.user = { userId: payload.userId };
     next();
   } catch (error) {
-    next("Authentication Failed");
+    res.status(400).json({ message: "Session Expired" });
   }
 };
 

@@ -63,9 +63,11 @@ const getCategoryResponses = async (userId, categories) => {
     const categoryQuestionsCount = category.questions.length;
 
     const Modified_Questions = responses.filter((response) => {
-      return category.questions.find((questionId) => questionId.equals(response.Question_id));
+      return category.questions.find((questionId) =>
+        questionId.equals(response.Question_id)
+      );
     });
-    
+
     const categoryDoneCount = Modified_Questions.filter(
       (question) => question.Question_Status === "Completed"
     ).length;
@@ -84,49 +86,16 @@ const getCategoryResponses = async (userId, categories) => {
   return categoryValues;
 };
 
-const getRevisitedQuestionInfo = async (userId) => {
-  const visitedQuestions = await responsemodel.countDocuments({
-    CreatedBy: userId,
-    Question_Status: "Revisit",
-  });
-  return {
-    CreatedBy: userId,
-    Revisit_Questions: visitedQuestions,
-  };
-};
-
-export const getUserResponses = async (req, res, next) => {
-  const User_info = req.user && req.user.userId;
-  if (!User_info) {
-    next("User ID not available");
-    return;
-  }
-  try {
-    const [Total_Questions, Questions_done, categories] = await Promise.all([
-      questionsmodel.countDocuments(),
-      responsemodel.countDocuments({
-        CreatedBy: User_info,
-        Question_Status: "Completed",
-      }),
-      categorymodel.find().lean(),
-    ]);
-    const Total_percentage = parseFloat(
-      ((Questions_done / Total_Questions) * 100).toFixed(2)
-    );
-    const Total_values = {
-      Total_Questions: Total_Questions,
-      Questions_done: Questions_done,
-      Total_percentage: Total_percentage,
-    };
-    const category_values = await getCategoryResponses(User_info, categories);
-    res.status(200).json({
-      Total_values,
-      category_values,
-    });
-  } catch (error) {
-    next(error.message);
-  }
-};
+// const getRevisitedQuestionInfo = async (userId) => {
+//   const visitedQuestions = await responsemodel.countDocuments({
+//     CreatedBy: userId,
+//     Question_Status: "Revisit",
+//   });
+//   return {
+//     CreatedBy: userId,
+//     Revisit_Questions: visitedQuestions,
+//   };
+// };
 
 export const CategoriesData = async (req, res, next) => {
   const User_info = req.user && req.user.userId;
@@ -169,6 +138,39 @@ export const CategoriesData = async (req, res, next) => {
     res.status(200).json({ responses: categoryValue, c_data: category });
   } catch (error) {
     return next(error.message);
+  }
+};
+
+export const getUserResponses = async (req, res, next) => {
+  const User_info = req.user && req.user.userId;
+  if (!User_info) {
+    next("User ID not available");
+    return;
+  }
+  try {
+    const [Total_Questions, Questions_done, categories] = await Promise.all([
+      questionsmodel.countDocuments(),
+      responsemodel.countDocuments({
+        CreatedBy: User_info,
+        Question_Status: "Completed",
+      }),
+      categorymodel.find().lean(),
+    ]);
+    const Total_percentage = parseFloat(
+      ((Questions_done / Total_Questions) * 100).toFixed(2)
+    );
+    const Total_values = {
+      Total_Questions: Total_Questions,
+      Questions_done: Questions_done,
+      Total_percentage: Total_percentage,
+    };
+    const category_values = await getCategoryResponses(User_info, categories);
+    res.status(200).json({
+      Total_values,
+      category_values,
+    });
+  } catch (error) {
+    next(error.message);
   }
 };
 

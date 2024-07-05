@@ -15,6 +15,7 @@ import questionRoutes from "./routes/questionRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import responseRoutes from "./routes/responseRoutes.js";
 import dataRoutes from "./routes/userResponseRoutes.js";
+import guestRoutes from "./routes/guestRoutes.js";
 import otpRoutes from "./routes/otpRoutes.js";
 
 dotenv.config();
@@ -35,6 +36,7 @@ app.use("/api/v1/question", questionRoutes);
 app.use("/api/v1/category", categoryRoutes);
 app.use("/api/v1/response", responseRoutes);
 app.use("/api/v1/data", dataRoutes);
+app.use("/api/v1/data", guestRoutes);
 
 app.use(errormiddleware);
 

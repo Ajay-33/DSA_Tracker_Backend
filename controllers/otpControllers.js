@@ -16,7 +16,7 @@ const sendOtpEmail = async (email, otp) => {
   });
 
   const mailOptions = {
-    from: "ajayumsa@gmail.com",
+    from: "a2zdsatracker@gmail.com",
     to: email,
     subject: "Your OTP Code",
     html: `

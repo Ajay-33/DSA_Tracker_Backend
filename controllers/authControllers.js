@@ -2,8 +2,7 @@ import usermodel from "../models/usermodel.js";
 import fs from "fs";
 import mongoose from "mongoose";
 import path from "path";
-import OTPModel from "../models/OTPModel.js";
-import bcrypt from "bcryptjs";
+import JWT from "jsonwebtoken";
 
 const getConfigFile = () => {
   try {
@@ -14,7 +13,7 @@ const getConfigFile = () => {
       "../config/predefinedAdminEmails.json"
     );
   } catch (err) {
-    console.error("Error getting config file path:", err);
+    // console.error("Error getting config file path:", err);
     return null;
   }
 };
@@ -26,7 +25,7 @@ const loadPredefinedAdminEmails = () => {
     }
     return JSON.parse(fs.readFileSync(configFile, "utf8"));
   } catch (err) {
-    console.error("Error loading predefined admin emails:", err);
+    // console.error("Error loading predefined admin emails:", err);
     return [];
   }
 };
@@ -60,7 +59,7 @@ export const addPredefinedEmailsController = async (req, res) => {
       message: "Predefined emails updated successfully",
     });
   } catch (error) {
-    console.error("Error adding predefined emails:", error);
+    // console.error("Error adding predefined emails:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -98,42 +97,27 @@ export const removePredefinedEmailsController = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error removing predefined email:", error);
+    // console.error("Error removing predefined email:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 export const registerController = async (req, res, next) => {
-  const { fname, lname, email, password, otp } = req.body;
-
+  const { fname, lname, email, password, otp, otpToken } = req.body;
   try {
     if (!fname || !lname || !email || !password || !otp) {
       return res
         .status(400)
         .json({ message: "Please fill out all the fields" });
     }
-
     const existingUser = await usermodel.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User Already Exists" });
     }
-
-    // Find the OTP record in the database
-    const otpRecord = await OTPModel.findOne({ email });
-    if (!otpRecord) {
-      return res.status(400).json({ message: "Invalid OTP or OTP expired" });
-    }
-
-    // Compare the provided OTP with the stored hashed OTP
-    const isOtpValid = await bcrypt.compare(otp, otpRecord.otp);
-    if (!isOtpValid) {
+    const decoded = JWT.verify(otpToken, process.env.JWT_SECRET);
+    if (decoded.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
-    if (isOtpValid && Date.now() > otpRecord.expiresAt) {
-      await OTPModel.deleteOne({ email });
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
     const predefinedAdminEmails = loadPredefinedAdminEmails();
     const userType = predefinedAdminEmails.includes(email) ? "Admin" : "User";
 
@@ -148,8 +132,6 @@ export const registerController = async (req, res, next) => {
     const token = user.createJWT();
 
     const { password: _, ...userWithoutPassword } = user.toObject();
-
-    await OTPModel.deleteOne({ email });
 
     res.status(201).json({
       success: true,
@@ -272,13 +254,13 @@ export const editRole = async (req, res) => {
       .status(200)
       .json({ success: true, message: "User role updated successfully" });
   } catch (error) {
-    console.error("Error updating user role:", error);
+    // console.error("Error updating user role:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 export const passwordController = async (req, res, next) => {
-  const { email, newPassword, otp } = req.body;
+  const { email, newPassword, otp, otpToken } = req.body;
 
   try {
     if (!email || !newPassword || !otp) {
@@ -292,24 +274,13 @@ export const passwordController = async (req, res, next) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Find the OTP record in the database
-    const otpRecord = await OTPModel.findOne({ email });
-    if (!otpRecord) {
-      return res.status(400).json({ message: "OTP Expired" });
-    }
-
-    // Compare the provided OTP with the stored hashed OTP
-    const isOtpValid = await bcrypt.compare(otp, otpRecord.otp);
-    if (!isOtpValid) {
+    const decoded = JWT.verify(otpToken, process.env.JWT_SECRET);
+    if (decoded.otp !== otp) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
-    if (isOtpValid && Date.now() > otpRecord.expiresAt) {
-      await OTPModel.deleteOne({ email });
-      return res.status(400).json({ message: "OTP expired" });
-    }
+
     user.password = newPassword;
     await user.save();
-    await OTPModel.deleteOne({ email });
 
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {

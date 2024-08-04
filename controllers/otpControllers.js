@@ -1,8 +1,22 @@
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import OTPModel from "../models/OTPModel.js";
+import JWT from "jsonwebtoken";
 import usermodel from "../models/usermodel.js";
+
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+const createOTPToken = (email) => {
+  const otp = generateOTP();
+  const payload = { email, otp };
+
+  const otpToken = JWT.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: "10m",
+  });
+
+  return { otp, otpToken };
+};
 
 const sendOtpEmail = async (email, otp) => {
   const transporter = nodemailer.createTransport({
@@ -37,7 +51,6 @@ const sendOtpEmail = async (email, otp) => {
     </div>
     `,
   };
-  
 
   await transporter.sendMail(mailOptions);
 };
@@ -54,26 +67,13 @@ export const sendOtpController = async (req, res) => {
       return res.status(404).json({ message: "Email already exists" });
     }
 
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const hashedOtp = await bcrypt.hash(otp, 10);
-    const otpExpiration = Date.now() + 10 * 60 * 1000;
+    const { otp, otpToken } = createOTPToken(email);
 
-    // Save OTP to the database
     await sendOtpEmail(email, otp);
-    let otpRecord = await OTPModel.findOne({ email });
-    if (otpRecord) {
-      otpRecord.otp = hashedOtp;
-      otpRecord.expiresAt = otpExpiration;
-      await otpRecord.save();
-    } else {
-      // Save new OTP to the database
-      await OTPModel.create({
-        email: email,
-        otp: hashedOtp,
-        expiresAt: otpExpiration,
-      });
-    }
-    res.status(200).json({ message: "OTP sent to your email" });
+
+    res
+      .status(200)
+      .json({ otpToken: otpToken, message: "OTP sent to your email" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -90,29 +90,16 @@ export const passwordOtp = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ message: "Email doesnot exist,Please Signup" });
+        .json({ message: "Email doesnot exist, Please Signup" });
     }
 
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const hashedOtp = await bcrypt.hash(otp, 10);
-    const otpExpiration = Date.now() + 10 * 60 * 1000;
+    const { otp, otpToken } = createOTPToken(email);
 
-    // Save OTP to the database
     await sendOtpEmail(email, otp);
-    let otpRecord = await OTPModel.findOne({ email });
-    if (otpRecord) {
-        otpRecord.otp = hashedOtp;
-        otpRecord.expiresAt = otpExpiration;
-        await otpRecord.save();
-    } else {
-      // Save new OTP to the database
-      await OTPModel.create({
-        email: email,
-        otp: hashedOtp,
-        expiresAt: otpExpiration,
-      });
-    }
-    res.status(200).json({ message: "OTP sent to your email" });
+
+    res
+      .status(200)
+      .json({ otpToken: otpToken, message: "OTP sent to your email" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

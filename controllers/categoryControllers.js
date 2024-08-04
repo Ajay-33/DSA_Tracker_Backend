@@ -78,7 +78,7 @@ export const getCategories = async (req, res, next) => {
     });
     res.status(200).json(categories);
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     return next(error);
   }
 };

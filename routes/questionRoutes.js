@@ -1,5 +1,6 @@
 import express from "express";
 import userAuth from "../middlewares/authmiddleware.js";
+import authorizeRoles from "../middlewares/authorizeRoles.js";
 import {
   addQuestion,
   deleteQuestion,
@@ -10,14 +11,14 @@ import {
 
 const router = express.Router();
 
-router.post("/add/:cid", userAuth, addQuestion);
+router.post("/add/:cid", userAuth,authorizeRoles("Admin", "Super Admin"),addQuestion);
 
 router.get("/show", userAuth, getAllQuestions);
 
 router.get("/show/:id", userAuth, getQuestionById);
 
-router.patch("/update/:id", userAuth, updateQuestion);
+router.patch("/update/:id", userAuth,authorizeRoles("Admin", "Super Admin"), updateQuestion);
 
-router.delete("/delete/:id/:cid", userAuth, deleteQuestion);
+router.delete("/delete/:id/:cid", userAuth,authorizeRoles("Admin", "Super Admin"),deleteQuestion);
 
 export default router;

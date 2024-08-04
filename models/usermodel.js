@@ -55,8 +55,8 @@ userSchema.methods.comparePassword = async function (userPassword) {
 };
 
 userSchema.methods.createJWT = function () {
-  return JWT.sign({ userId: this._id }, process.env.JWT_SECRET, {
-    expiresIn: "90d",
+  return JWT.sign({ userId: this._id, userType:this.userType}, process.env.JWT_SECRET, {
+    expiresIn: "30d",
   });
 };
 
